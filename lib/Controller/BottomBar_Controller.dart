@@ -212,6 +212,9 @@ class BottomBarController extends GetxController {
 
       isBinauralPlaying.value = true;
       hasBinauralPlayed.value = true;
+      
+      // Auto-select binaural player when it starts playing
+      isMusicSelected.value = false;
 
       print("Binaural playback started successfully");
 
@@ -335,6 +338,9 @@ class BottomBarController extends GetxController {
 
       isMusicPlaying.value = true;
       hasMusicPlayed.value = true;
+      
+      // Auto-select music player when it starts playing
+      isMusicSelected.value = true;
 
       print("Music playback started successfully");
 

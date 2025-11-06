@@ -387,20 +387,6 @@ class _HomePageState extends State<HomePage>
           ),
         ),
       ),
-      // bottomNavigationBar: FutureBuilder<List<MusicItem>>(
-      //   future: _musicItems,
-      //   builder: (context, snapshot) {
-      //     if (snapshot.connectionState == ConnectionState.waiting) {
-      //       return SizedBox(); // Placeholder while loading
-      //     } else if (snapshot.hasError || snapshot.data == null) {
-      //       return SizedBox(); // Placeholder for error or empty data
-      //     }
-      //     return AudioPlayerWidget(
-      //       musicList: snapshot.data!,
-      //       binauralList: _binauralItems,
-      //     );
-      //   },
-      // ), // Floating player persists
     );
   }
 
@@ -436,16 +422,6 @@ class _HomePageState extends State<HomePage>
                   fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
             ),
             const SizedBox(height: 10),
-            // MusicList(
-            //     items: _homeController.getBinauralMusicItems(), isBinaural: true),
-            const SizedBox(height: 20),
-            // const Text(
-            //   "Music for You",
-            //   style: TextStyle(
-            //       fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-            // ),
-            // const SizedBox(height: 5),
-            // MusicList(items: _homeController.getMusicItems(), isBinaural: false),
             FutureBuilder<List<MusicItem>>(
               future: _binauralItems,
               builder: (context, snapshot) {
@@ -460,13 +436,13 @@ class _HomePageState extends State<HomePage>
                 return MusicList(items: snapshot.data!, isBinaural: true);
               },
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             const Text(
               "Music for You",
               style: TextStyle(
                   fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
             ),
-            SizedBox(height: 10),
+            const SizedBox(height: 10),
             FutureBuilder<List<MusicItem>>(
               future: _musicItems,
               builder: (context, snapshot) {
@@ -483,10 +459,11 @@ class _HomePageState extends State<HomePage>
             ),
             // Player widget - scrolls with content (only visible when playing)
             const SizedBox(height: 16),
-            AudioPlayerWidget(
-              musicList: _musicItems2!,
-              binauralList: _binauralItems2!,
-            ),
+            if (_musicItems2 != null && _binauralItems2 != null)
+              AudioPlayerWidget(
+                musicList: _musicItems2!,
+                binauralList: _binauralItems2!,
+              ),
           ],
         ),
       ),
