@@ -192,6 +192,8 @@ flutter build linux --release
 - **Download:** open the workflow run in GitHub Actions → Artifacts → `ios-ipa`.
 - **Manual upload:** download the artifact locally and upload the `.ipa` to TestFlight or your preferred distribution channel.
 
+> **Note:** iOS build workflow currently generates unsigned IPA artifacts. Signing and TestFlight uploads will be added after Apple Developer account setup.
+
 ## Security
 
 - JWT token authentication
