@@ -1,0 +1,4 @@
+app_identifier("com.example.elevate.elevate") # replace with your bundle ID
+apple_id("your-apple-id@example.com")     # replace with your Apple ID email
+team_id("3DG7QUMSV8")                   # from Apple Developer account
+
