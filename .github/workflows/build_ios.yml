@@ -18,6 +18,12 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.24.0'
+          channel: 'stable'
+
+      - name: Verify Flutter setup
+        run: |
+          flutter --version
+          flutter doctor -v
 
       - name: Install dependencies
         run: flutter pub get
@@ -25,15 +31,26 @@ jobs:
       - name: Install CocoaPods
         run: |
           cd ios
+          pod --version
           pod install --repo-update
 
       - name: Build iOS IPA (unsigned)
-        run: flutter build ipa --no-codesign
+        run: |
+          flutter build ipa --no-codesign --verbose || {
+            echo "Build failed, checking build directory..."
+            ls -la build/ios/ || true
+            exit 1
+          }
 
       - name: Archive build artifacts
         run: |
           mkdir -p build_artifacts
-          cp -r build/ios/ipa/* build_artifacts/
+          if [ -d "build/ios/ipa" ]; then
+            cp -r build/ios/ipa/* build_artifacts/ || true
+          else
+            echo "Warning: build/ios/ipa directory not found"
+            ls -la build/ios/ || true
+          fi
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
