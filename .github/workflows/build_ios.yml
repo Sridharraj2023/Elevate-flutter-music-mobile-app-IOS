@@ -29,31 +29,107 @@ jobs:
 
       - name: Install CocoaPods
         run: |
+          # Configure git to handle shallow clones and avoid exit code 128 errors
+          git config --global --add safe.directory '*'
+          git config --global protocol.version 2
+          git config --global init.defaultBranch main
+          
           cd ios
           pod --version
-          pod install --repo-update
+          
+          # Update CocoaPods repo (warnings are non-critical if cached repo exists)
+          # Continue even if repo update fails - pod install will use cached repo
+          pod repo update || echo "Warning: CocoaPods repo update had issues, continuing with cached repo..."
+          
+          # Install pods (will use cached repo if update failed)
+          pod install
 
       - name: Build iOS IPA (unsigned)
         run: |
           flutter build ipa --no-codesign --verbose || {
             echo "Build failed, checking build directory..."
             ls -la build/ios/ || true
+            IPA_FILES=$(find build/ios -name "*.ipa" -type f 2>/dev/null)
+            if [ -z "$IPA_FILES" ]; then
+              echo "No IPA files found"
+            else
+              echo "Found IPA files:"
+              echo "$IPA_FILES"
+            fi
             exit 1
           }
+          
+          # Verify IPA was created
+          echo "Checking for IPA file..."
+          IPA_FILES=$(find build/ios -name "*.ipa" -type f 2>/dev/null)
+          if [ -z "$IPA_FILES" ]; then
+            echo "Warning: No IPA file found after build"
+          else
+            echo "✓ IPA file(s) found:"
+            echo "$IPA_FILES"
+          fi
 
       - name: Archive build artifacts
         run: |
           mkdir -p build_artifacts
+          
+          # Find and copy IPA files from various possible locations
+          IPA_FOUND=false
+          
+          # Check the standard location: build/ios/ipa/
           if [ -d "build/ios/ipa" ]; then
-            cp -r build/ios/ipa/* build_artifacts/ || true
+            echo "Checking build/ios/ipa directory..."
+            IPA_FILE=$(find build/ios/ipa -name "*.ipa" -type f 2>/dev/null | head -1)
+            if [ -n "$IPA_FILE" ] && [ -f "$IPA_FILE" ]; then
+              cp "$IPA_FILE" build_artifacts/
+              IPA_FOUND=true
+              echo "✓ Found IPA in build/ios/ipa"
+            fi
+          fi
+          
+          # Check archive directory
+          if [ -d "build/ios/archive" ]; then
+            echo "Checking build/ios/archive directory..."
+            IPA_FILE=$(find build/ios/archive -name "*.ipa" -type f 2>/dev/null | head -1)
+            if [ -n "$IPA_FILE" ] && [ -f "$IPA_FILE" ]; then
+              cp "$IPA_FILE" build_artifacts/
+              IPA_FOUND=true
+              echo "✓ Found IPA in build/ios/archive"
+            fi
+          fi
+          
+          # Search recursively in build/ios (but limit depth to avoid searching too much)
+          if [ "$IPA_FOUND" = false ]; then
+            echo "Searching for IPA files in build/ios..."
+            IPA_FILE=$(find build/ios -name "*.ipa" -type f 2>/dev/null | head -1)
+            if [ -n "$IPA_FILE" ]; then
+              cp "$IPA_FILE" build_artifacts/
+              IPA_FOUND=true
+              echo "✓ Found IPA at: $IPA_FILE"
+            fi
+          fi
+          
+          # List what we collected
+          echo ""
+          echo "=== Artifacts Summary ==="
+          if [ "$IPA_FOUND" = true ]; then
+            ls -lah build_artifacts/
+            echo "✓ IPA file(s) ready for upload"
           else
-            echo "Warning: build/ios/ipa directory not found"
-            ls -la build/ios/ || true
+            echo "⚠ No IPA files found"
+            echo "Build directory contents:"
+            ls -la build/ios/ 2>/dev/null || echo "build/ios/ does not exist"
+            echo ""
+            echo "Searching for any IPA files:"
+            find build/ios -name "*.ipa" -type f 2>/dev/null || echo "No IPA files found anywhere in build/ios"
           fi
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: ios-ipa
           path: build_artifacts/
+          if-no-files-found: warn
+          retention-days: 7
 
