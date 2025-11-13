@@ -13,6 +13,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          submodules: false
+          fetch-depth: 1
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -73,55 +76,49 @@ jobs:
         run: |
           mkdir -p build_artifacts
           
-          # Find and copy IPA files from various possible locations
-          IPA_FOUND=false
+          echo "=== Starting Artifact Collection ==="
+          echo "Current directory: $(pwd)"
+          echo ""
           
-          # Check the standard location: build/ios/ipa/
-          if [ -d "build/ios/ipa" ]; then
-            echo "Checking build/ios/ipa directory..."
-            IPA_FILE=$(find build/ios/ipa -name "*.ipa" -type f 2>/dev/null | head -1)
-            if [ -n "$IPA_FILE" ] && [ -f "$IPA_FILE" ]; then
-              cp "$IPA_FILE" build_artifacts/
-              IPA_FOUND=true
-              echo "✓ Found IPA in build/ios/ipa"
+          # Find all IPA files in build/ios
+          echo "Searching for IPA files in build/ios..."
+          IPA_COUNT=0
+          
+          # Find and copy all IPA files
+          find build/ios -name "*.ipa" -type f 2>/dev/null | while IFS= read -r IPA_FILE; do
+            if [ -f "$IPA_FILE" ]; then
+              echo "Found IPA: $IPA_FILE"
+              cp -v "$IPA_FILE" build_artifacts/
+              if [ -f "build_artifacts/$(basename "$IPA_FILE")" ]; then
+                echo "✓ Successfully copied: $(basename "$IPA_FILE")"
+              else
+                echo "✗ Failed to copy: $IPA_FILE"
+              fi
             fi
-          fi
+          done
           
-          # Check archive directory
-          if [ -d "build/ios/archive" ]; then
-            echo "Checking build/ios/archive directory..."
-            IPA_FILE=$(find build/ios/archive -name "*.ipa" -type f 2>/dev/null | head -1)
-            if [ -n "$IPA_FILE" ] && [ -f "$IPA_FILE" ]; then
-              cp "$IPA_FILE" build_artifacts/
-              IPA_FOUND=true
-              echo "✓ Found IPA in build/ios/archive"
-            fi
-          fi
+          # Count copied files (while loop runs in subshell, so count separately)
+          IPA_COUNT=$(find build_artifacts -name "*.ipa" -type f 2>/dev/null | wc -l | tr -d ' ')
           
-          # Search recursively in build/ios (but limit depth to avoid searching too much)
-          if [ "$IPA_FOUND" = false ]; then
-            echo "Searching for IPA files in build/ios..."
-            IPA_FILE=$(find build/ios -name "*.ipa" -type f 2>/dev/null | head -1)
-            if [ -n "$IPA_FILE" ]; then
-              cp "$IPA_FILE" build_artifacts/
-              IPA_FOUND=true
-              echo "✓ Found IPA at: $IPA_FILE"
-            fi
-          fi
-          
-          # List what we collected
+          # Final verification and debugging
           echo ""
           echo "=== Artifacts Summary ==="
-          if [ "$IPA_FOUND" = true ]; then
+          COPIED_FILES=$(find build_artifacts -name "*.ipa" -type f 2>/dev/null)
+          if [ -n "$COPIED_FILES" ] && [ "$IPA_COUNT" -gt 0 ]; then
+            echo "✓ IPA file(s) ready for upload ($IPA_COUNT file(s)):"
             ls -lah build_artifacts/
-            echo "✓ IPA file(s) ready for upload"
           else
-            echo "⚠ No IPA files found"
-            echo "Build directory contents:"
-            ls -la build/ios/ 2>/dev/null || echo "build/ios/ does not exist"
+            echo "⚠ No IPA files in build_artifacts/ directory"
             echo ""
-            echo "Searching for any IPA files:"
-            find build/ios -name "*.ipa" -type f 2>/dev/null || echo "No IPA files found anywhere in build/ios"
+            echo "Debugging information:"
+            echo "Directory contents:"
+            ls -la build_artifacts/ || echo "build_artifacts/ is empty"
+            echo ""
+            echo "Searching for IPA files in build/ios:"
+            find build/ios -name "*.ipa" -type f 2>/dev/null || echo "No IPA files found"
+            echo ""
+            echo "Build directory structure (first 3 levels):"
+            find build/ios -type d -maxdepth 3 2>/dev/null | head -30 || echo "build/ios/ does not exist"
           fi
 
       - name: Upload IPA artifact
