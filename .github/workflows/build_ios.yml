@@ -42,10 +42,21 @@ jobs:
 
       - name: Build iOS IPA (unsigned)
         run: |
-          flutter build ipa --release --no-codesign --verbose || {
-            echo " IPA Build failed"
-            exit 1
-          }
+          echo "CLEAN FLUTTER & POD CACHE"
+          flutter clean
+          echo "REMOVE OLD PODS"
+          rm -rf ios/Pods
+          rm -rf ios/Podfile.lock
+          pod deintegrate || true
+          echo "INSTALL PODS FRESH"
+          cd ios && pod install && cd ..
+          echo "FORCE REAL DEVICE BUILD"
+          flutter build ipa \
+            --release \
+            --no-codesign \
+            --target-platform=ios \
+            --dart-define=CI=true \
+            --verbose
 
       - name: Collect build artifacts
         run: |
