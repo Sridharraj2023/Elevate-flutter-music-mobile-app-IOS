@@ -32,101 +32,31 @@ jobs:
 
       - name: Install CocoaPods
         run: |
-          # Configure git to handle shallow clones and avoid exit code 128 errors
           git config --global --add safe.directory '*'
           git config --global protocol.version 2
           git config --global init.defaultBranch main
-          
+
           cd ios
-          pod --version
-          
-          # Update CocoaPods repo (warnings are non-critical if cached repo exists)
-          # Continue even if repo update fails - pod install will use cached repo
-          pod repo update || echo "Warning: CocoaPods repo update had issues, continuing with cached repo..."
-          
-          # Install pods (will use cached repo if update failed)
+          pod repo update || echo "CocoaPods repo update failed, using cached repo"
           pod install
 
       - name: Build iOS IPA (unsigned)
         run: |
-          flutter build ipa --no-codesign --verbose || {
-            echo "Build failed, checking build directory..."
-            ls -la build/ios/ || true
-            IPA_FILES=$(find build/ios -name "*.ipa" -type f 2>/dev/null)
-            if [ -z "$IPA_FILES" ]; then
-              echo "No IPA files found"
-            else
-              echo "Found IPA files:"
-              echo "$IPA_FILES"
-            fi
+          flutter build ipa --release --no-codesign --verbose || {
+            echo " IPA Build failed"
             exit 1
           }
-          
-          # Verify IPA was created
-          echo "Checking for IPA file..."
-          IPA_FILES=$(find build/ios -name "*.ipa" -type f 2>/dev/null)
-          if [ -z "$IPA_FILES" ]; then
-            echo "Warning: No IPA file found after build"
-          else
-            echo "✓ IPA file(s) found:"
-            echo "$IPA_FILES"
-          fi
 
-      - name: Archive build artifacts
+      - name: Collect build artifacts
         run: |
           mkdir -p build_artifacts
-          
-          echo "=== Starting Artifact Collection ==="
-          echo "Current directory: $(pwd)"
-          echo ""
-          
-          # Find all IPA files in build/ios
-          echo "Searching for IPA files in build/ios..."
-          IPA_COUNT=0
-          
-          # Find and copy all IPA files
-          find build/ios -name "*.ipa" -type f 2>/dev/null | while IFS= read -r IPA_FILE; do
-            if [ -f "$IPA_FILE" ]; then
-              echo "Found IPA: $IPA_FILE"
-              cp -v "$IPA_FILE" build_artifacts/
-              if [ -f "build_artifacts/$(basename "$IPA_FILE")" ]; then
-                echo "✓ Successfully copied: $(basename "$IPA_FILE")"
-              else
-                echo "✗ Failed to copy: $IPA_FILE"
-              fi
-            fi
-          done
-          
-          # Count copied files (while loop runs in subshell, so count separately)
-          IPA_COUNT=$(find build_artifacts -name "*.ipa" -type f 2>/dev/null | wc -l | tr -d ' ')
-          
-          # Final verification and debugging
-          echo ""
-          echo "=== Artifacts Summary ==="
-          COPIED_FILES=$(find build_artifacts -name "*.ipa" -type f 2>/dev/null)
-          if [ -n "$COPIED_FILES" ] && [ "$IPA_COUNT" -gt 0 ]; then
-            echo "✓ IPA file(s) ready for upload ($IPA_COUNT file(s)):"
-            ls -lah build_artifacts/
-          else
-            echo "⚠ No IPA files in build_artifacts/ directory"
-            echo ""
-            echo "Debugging information:"
-            echo "Directory contents:"
-            ls -la build_artifacts/ || echo "build_artifacts/ is empty"
-            echo ""
-            echo "Searching for IPA files in build/ios:"
-            find build/ios -name "*.ipa" -type f 2>/dev/null || echo "No IPA files found"
-            echo ""
-            echo "Build directory structure (first 3 levels):"
-            find build/ios -type d -maxdepth 3 2>/dev/null | head -30 || echo "build/ios/ does not exist"
-          fi
+          find build/ios -name "*.ipa" -type f -exec cp {} build_artifacts/ \;
+          ls -lah build_artifacts || echo "⚠ No IPA found"
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
-        if: always()
         with:
           name: ios-ipa
           path: build_artifacts/
           if-no-files-found: warn
           retention-days: 7
-
