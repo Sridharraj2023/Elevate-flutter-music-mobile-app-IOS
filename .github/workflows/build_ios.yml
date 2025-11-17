@@ -2,8 +2,7 @@ name: Build iOS App
 
 on:
   push:
-    branches:
-      - main
+    branches: [ "main" ]
   pull_request:
 
 jobs:
@@ -11,56 +10,47 @@ jobs:
     runs-on: macos-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          submodules: false
-          fetch-depth: 1
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
 
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: 'stable'
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        channel: stable
 
-      - name: Verify Flutter setup
-        run: |
-          flutter --version
-          flutter doctor -v
+    - name: Flutter Info
+      run: |
+        flutter --version
+        flutter doctor -v
 
-      - name: Install dependencies
-        run: flutter pub get
+    - name: Install dependencies
+      run: flutter pub get
 
-      - name: Install CocoaPods
-        run: |
-          git config --global --add safe.directory '*'
-          git config --global protocol.version 2
-          git config --global init.defaultBranch main
+    - name: Install CocoaPods
+      run: |
+        cd ios
+        pod install
+        cd ..
 
-          cd ios
-          pod repo update || echo "CocoaPods repo update failed, using cached repo"
-          pod install
+    - name: Build unsigned IPA
+      run: |
+        flutter clean
+        flutter pub get
+        flutter build ipa --release --no-codesign --verbose
 
-      - name: Build iOS IPA (unsigned)
-        run: |
-          flutter clean
-          flutter pub get
-          flutter precache --ios
-          flutter build ios --config-only --simulator
-          cd ios && pod deintegrate || true && cd ..
-          rm -rf ios/Pods ios/Podfile.lock
-          cd ios && pod install && cd ..
-          flutter build ipa --release --no-codesign --verbose
+    - name: Collect IPA
+      run: |
+        mkdir -p build_artifacts
+        find build/ios -name "*.ipa" -maxdepth 5 -exec cp {} build_artifacts/ \;
+        echo "IPA FILES:"
+        ls -lah build_artifacts || echo "NO IPA FOUND"
 
-      - name: Collect build artifacts
-        run: |
-          mkdir -p build_artifacts
-          find build/ios -name "*.ipa" -type f -exec cp {} build_artifacts/ \;
-          ls -lah build_artifacts || echo "⚠ No IPA found"
-
-      - name: Upload IPA artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ios-ipa
-          path: build_artifacts/
-          if-no-files-found: warn
-          retention-days: 7
+    - name: Upload IPA artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ios-ipa
+        path: build_artifacts/
+        if-no-files-found: error
+        retention-days: 7
