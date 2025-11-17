@@ -2,55 +2,45 @@ name: Build iOS App
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
+    branches: ["main"]
 
 jobs:
   build_ios:
     runs-on: macos-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 1
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Setup Flutter
-      uses: subosito/flutter-action@v2
-      with:
-        channel: stable
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
 
-    - name: Flutter Info
-      run: |
-        flutter --version
-        flutter doctor -v
+      - name: Install dependencies
+        run: flutter pub get
 
-    - name: Install dependencies
-      run: flutter pub get
+      - name: Install CocoaPods
+        run: |
+          cd ios
+          pod install --repo-update
 
-    - name: Install CocoaPods
-      run: |
-        cd ios
-        pod install
-        cd ..
+      - name: Build IPA (unsigned)
+        run: |
+          flutter clean
+          flutter pub get
+          flutter build ipa --release --no-codesign --verbose
 
-    - name: Build unsigned IPA
-      run: |
-        flutter clean
-        flutter pub get
-        flutter build ipa --release --no-codesign --verbose
+      - name: Collect IPA
+        run: |
+          mkdir -p build_artifacts
+          find build/ios -name "*.ipa" -exec cp {} build_artifacts/ \;
+          ls -lah build_artifacts
 
-    - name: Collect IPA
-      run: |
-        mkdir -p build_artifacts
-        find build/ios -name "*.ipa" -maxdepth 5 -exec cp {} build_artifacts/ \;
-        echo "IPA FILES:"
-        ls -lah build_artifacts || echo "NO IPA FOUND"
-
-    - name: Upload IPA artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: ios-ipa
-        path: build_artifacts/
-        if-no-files-found: error
-        retention-days: 7
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-ipa
+          path: build_artifacts/
+          if-no-files-found: error
+          retention-days: 7
