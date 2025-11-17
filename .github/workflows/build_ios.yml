@@ -29,13 +29,12 @@ jobs:
           pod install --repo-update
 
       - name: Build IPA (unsigned)
-        run: |
-          flutter build ipa --release --no-codesign --verbose
+        run: flutter build ipa --release --no-codesign --verbose
 
       - name: Collect IPA
         run: |
           mkdir -p build_artifacts
-          find build/ios -name "*.ipa" -exec cp {} build_artifacts/ \;
+          cp build/ios/archive/*.ipa build_artifacts/ 2>/dev/null || echo "No IPA found!"
           ls -lah build_artifacts
 
       - name: Upload IPA artifact
