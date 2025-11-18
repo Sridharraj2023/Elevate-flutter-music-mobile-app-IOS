@@ -23,7 +23,7 @@ jobs:
       - name: Install CocoaPods
         run: |
           cd ios
-          pod install --repo-update
+          pod install --verbose || pod install --allow-root
 
       - name: Build IPA (unsigned)
         run: flutter build ipa --release --no-codesign --verbose
