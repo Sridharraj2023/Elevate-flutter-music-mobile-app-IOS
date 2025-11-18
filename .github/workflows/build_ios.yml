@@ -28,10 +28,17 @@ jobs:
       - name: Build IPA (unsigned)
         run: flutter build ipa --release --no-codesign --verbose
 
+      - name: Debug IPA Output
+        run: |
+          echo "Searching for IPA files in build/ios..."
+          find build/ios -name "*.ipa" -type f -print || echo "No IPA found during debug scan!"
+
       - name: Collect IPA
         run: |
           mkdir -p build_artifacts
-          cp build/ios/archive/*.ipa build_artifacts/ 2>/dev/null || echo "No IPA found!"
+          echo "Copying IPA files from build/ios..."
+          find build/ios -name "*.ipa" -exec cp {} build_artifacts/ \; || echo "No IPA found!"
+          echo "--- Contents of build_artifacts ---"
           ls -lah build_artifacts
 
       - name: Upload IPA artifact
