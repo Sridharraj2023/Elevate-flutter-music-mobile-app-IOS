@@ -1,13 +1,20 @@
 workflows:
-  build_unsigned_ipa:
-    name: Build Unsigned iOS IPA
+  build_ios_simulator:
+    name: Build iOS Simulator App
     environment:
       flutter: stable
       xcode: latest
     scripts:
       - name: Install dependencies
         script: flutter pub get
-      - name: Build unsigned IPA
-        script: flutter build ipa --release --no-codesign
+
+      - name: Build iOS Simulator App
+        script: flutter build ios --simulator --debug
+
+      - name: Zip Simulator App
+        script: |
+          cd build/ios/iphonesimulator
+          zip -r Simulator-Runner.app.zip Runner.app
+
     artifacts:
-      - build/ios/ipa/*.ipa
+      - build/ios/iphonesimulator/Simulator-Runner.app.zip
