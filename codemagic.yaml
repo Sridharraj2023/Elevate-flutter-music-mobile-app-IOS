@@ -1,0 +1,13 @@
+workflows:
+  build_unsigned_ipa:
+    name: Build Unsigned iOS IPA
+    environment:
+      flutter: stable
+      xcode: latest
+    scripts:
+      - name: Install dependencies
+        script: flutter pub get
+      - name: Build unsigned IPA
+        script: flutter build ipa --release --no-codesign
+    artifacts:
+      - build/ios/ipa/*.ipa
